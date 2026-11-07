@@ -16,6 +16,18 @@ Mudita's E Ink-optimised Jetpack Compose component library.
 
 It has no reminders, notifications, background sync, due date or priority editing, or projects.
 
+## Known issues
+
+- **Some completed tasks seem to disappear.** The **Completed today** section lists tasks
+  that were *due* today and are now complete, not every task you completed today. When you
+  complete one of the tasks below, it leaves the main list but never appears under
+  **Completed today**, so it looks as if it has vanished. It is still completed correctly in
+  Todoist and shows in Todoist's own completed history.
+  - **Overdue tasks.** A task that was due on an earlier day.
+  - **Recurring tasks.** Todoist moves them to their next due date instead of closing them.
+  - **Tasks with no due date, or due on a later day**, when you complete them in another
+    Todoist app.
+
 ## Auth
 
 The app uses your Todoist **personal API token**:
