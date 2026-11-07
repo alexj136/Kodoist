@@ -66,3 +66,7 @@ Tip: to avoid typing the token into the emulator by hand, tap the token field, t
 
 Sideload `app-debug.apk`, or a signed release build, through Mudita Center:
 Manage Files → App Installers.
+
+## License
+
+MIT. See [LICENSE](LICENSE).
