@@ -19,6 +19,9 @@ android {
 
     buildTypes {
         release {
+            // Signed with the local debug key: no release key to manage. Users who install a
+            // build from a different machine must uninstall the old one first.
+            signingConfig = signingConfigs.getByName("debug")
             isMinifyEnabled = true
             proguardFiles(getDefaultProguardFile("proguard-android-optimize.txt"))
         }
