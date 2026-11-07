@@ -1,0 +1,11 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <!-- Window-level theme only; all in-app styling comes from ThemeMMD (Compose). -->
+    <style name="AppTheme" parent="android:Theme.Material.Light.NoActionBar">
+        <item name="android:windowBackground">#FFFFFFFF</item>
+        <item name="android:statusBarColor">#FF000000</item>
+        <item name="android:navigationBarColor">#FF000000</item>
+        <!-- Activity transitions cause full-panel refreshes on E Ink. -->
+        <item name="android:windowAnimationStyle">@null</item>
+    </style>
+</resources>
