@@ -5,12 +5,12 @@ plugins {
 }
 
 android {
-    namespace = "com.alexj.todoistkompakt"
+    namespace = "net.alexjeffery.kodoist"
     // MMD pulls in activity-compose 1.10.x, which requires compileSdk 35.
     compileSdk = 35
 
     defaultConfig {
-        applicationId = "com.alexj.todoistkompakt"
+        applicationId = "net.alexjeffery.kodoist"
         minSdk = 28
         targetSdk = 31 // matches MuditaOS K (Android 12)
         versionCode = 1

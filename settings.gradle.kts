@@ -13,5 +13,5 @@ dependencyResolutionManagement {
     }
 }
 
-rootProject.name = "TodoistKompakt"
+rootProject.name = "Kodoist"
 include(":app")

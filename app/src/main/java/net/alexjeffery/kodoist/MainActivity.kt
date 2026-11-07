@@ -1,6 +1,6 @@
 @file:OptIn(ExperimentalMaterial3Api::class)
 
-package com.alexj.todoistkompakt
+package net.alexjeffery.kodoist
 
 import android.os.Bundle
 import androidx.activity.ComponentActivity

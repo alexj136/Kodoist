@@ -1,4 +1,4 @@
-# Todoist for Mudita Kompakt
+# Kodoist: A Todoist client for Mudita Kompakt
 
 A deliberately tiny Todoist client for the Mudita Kompakt, built with
 [Mudita Mindful Design (MMD)](https://github.com/mudita/MMD) (`com.mudita:MMD`),
@@ -36,7 +36,7 @@ which is MuditaOS K / Android 12.
 emulator -avd mudita_kompakt_api31 &
 adb wait-for-device
 adb install -r app/build/outputs/apk/debug/app-debug.apk
-adb shell am start -n com.alexj.todoistkompakt/.MainActivity
+adb shell am start -n net.alexjeffery.kodoist/.MainActivity
 ```
 
 The `mudita_kompakt_api31` AVD was created with:

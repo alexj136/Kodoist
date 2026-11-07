@@ -1,4 +1,4 @@
-package com.alexj.todoistkompakt
+package net.alexjeffery.kodoist
 
 import android.app.Application
 import android.content.Context

@@ -1,4 +1,4 @@
-package com.alexj.todoistkompakt
+package net.alexjeffery.kodoist
 
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
