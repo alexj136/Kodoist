@@ -4,8 +4,11 @@ package net.alexjeffery.kodoist
 
 import android.os.Bundle
 import androidx.activity.ComponentActivity
+import androidx.activity.compose.BackHandler
 import androidx.activity.compose.setContent
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.verticalScroll
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -35,6 +38,7 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.saveable.rememberSaveable
+import androidx.compose.runtime.saveable.rememberSaveableStateHolder
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -63,7 +67,7 @@ class MainActivity : ComponentActivity() {
         setContent {
             ThemeMMD {
                 val vm: TasksViewModel = viewModel()
-                if (vm.token == null) TokenScreen(vm) else TodayScreen(vm)
+                if (vm.token == null) TokenScreen(vm) else SignedInScreen(vm)
             }
         }
     }
@@ -108,13 +112,26 @@ private fun TokenScreen(vm: TasksViewModel) {
 }
 
 @Composable
-private fun TodayScreen(vm: TasksViewModel) {
+private fun SignedInScreen(vm: TasksViewModel) {
     // Re-sync whenever the app comes to the foreground, so changes made elsewhere show up.
     LifecycleResumeEffect(Unit) {
         vm.refresh()
         onPauseOrDispose { }
     }
 
+    // Keeps the Today view's scroll position and expanded sections while a task is open.
+    val saveableState = rememberSaveableStateHolder()
+    val open = vm.openTask
+    if (open == null) {
+        saveableState.SaveableStateProvider("today") { TodayScreen(vm) }
+    } else {
+        BackHandler { vm.closeTaskView() }
+        TaskScreen(open, onBack = { vm.closeTaskView() })
+    }
+}
+
+@Composable
+private fun TodayScreen(vm: TasksViewModel) {
     var confirmLogout by rememberSaveable { mutableStateOf(false) }
     if (confirmLogout) {
         ConfirmDialog(
@@ -219,7 +236,12 @@ private fun TaskList(vm: TasksViewModel) {
             }
         }
         items(vm.tasks, key = { it.id }) { task ->
-            TaskRow(task, checked = task.id in vm.pending, onToggle = { vm.complete(task) })
+            TaskRow(
+                task,
+                checked = task.id in vm.pending,
+                onToggle = { vm.complete(task) },
+                onOpen = { vm.viewTask(task, completed = false) },
+            )
             HorizontalDividerMMD()
         }
         if (vm.completed.isNotEmpty()) {
@@ -241,6 +263,7 @@ private fun TaskList(vm: TasksViewModel) {
                         checked = task.id !in vm.pending,
                         strikethrough = true,
                         onToggle = { vm.reopen(task) },
+                        onOpen = { vm.viewTask(task, completed = true) },
                     )
                     HorizontalDividerMMD()
                 }
@@ -250,11 +273,17 @@ private fun TaskList(vm: TasksViewModel) {
 }
 
 @Composable
-private fun TaskRow(task: Task, checked: Boolean, strikethrough: Boolean = false, onToggle: () -> Unit) {
+private fun TaskRow(
+    task: Task,
+    checked: Boolean,
+    strikethrough: Boolean = false,
+    onToggle: () -> Unit,
+    onOpen: () -> Unit,
+) {
     Row(
         modifier = Modifier
             .fillMaxWidth()
-            .clickable(onClick = onToggle)
+            .clickable(onClick = onOpen)
             .padding(horizontal = 8.dp, vertical = 4.dp),
         verticalAlignment = Alignment.CenterVertically,
     ) {
@@ -273,8 +302,79 @@ private fun TaskRow(task: Task, checked: Boolean, strikethrough: Boolean = false
     }
 }
 
+/** A read-only view of one task: name, description, then metadata pinned to the bottom. */
+@Composable
+private fun TaskScreen(open: OpenTask, onBack: () -> Unit) {
+    val task = open.task
+    Scaffold(
+        topBar = {
+            TopAppBarMMD(
+                title = { },
+                navigationIcon = {
+                    IconButton(onClick = onBack) {
+                        Icon(AppIcons.Back, contentDescription = "Back")
+                    }
+                },
+            )
+        },
+    ) { padding ->
+        Column(Modifier.padding(padding).fillMaxSize()) {
+            // Only this part scrolls, so a long description can't push the metadata off screen.
+            Column(
+                Modifier
+                    .weight(1f)
+                    .fillMaxWidth()
+                    .verticalScroll(rememberScrollState())
+                    .padding(16.dp),
+                verticalArrangement = Arrangement.spacedBy(16.dp),
+            ) {
+                TextMMD(
+                    task.content,
+                    style = MaterialTheme.typography.headlineSmall,
+                    color = if (open.completed) Color.Gray else Color.Black,
+                    textDecoration = if (open.completed) TextDecoration.LineThrough else null,
+                )
+                task.description?.let {
+                    TextFieldMMD(
+                        value = it,
+                        onValueChange = { },
+                        modifier = Modifier.fillMaxWidth(),
+                        readOnly = true,
+                    )
+                }
+            }
+            HorizontalDividerMMD()
+            Column(
+                Modifier.fillMaxWidth().padding(16.dp),
+                verticalArrangement = Arrangement.spacedBy(4.dp),
+            ) {
+                metadata(task).forEach { (label, value) ->
+                    TextMMD("$label: $value", style = MaterialTheme.typography.bodyMedium)
+                }
+            }
+        }
+    }
+}
+
+/** Label and value pairs for the task view. Fields with nothing to show are left out. */
+private fun metadata(task: Task): List<Pair<String, String>> = buildList {
+    add("Due" to (task.due?.let { due ->
+        due.date.format(fullDateFormat) + (due.time?.let { " " + it.format(timeFormat) } ?: "")
+    } ?: "None"))
+    task.due?.takeIf { it.isRecurring }?.let { add("Repeats" to (it.text ?: "Yes")) }
+    task.deadline?.let { add("Deadline" to it.format(fullDateFormat)) }
+    task.duration?.let { add("Duration" to it) }
+    add("Priority" to "P${5 - task.priority}")
+    if (task.labels.isNotEmpty()) add("Labels" to task.labels.joinToString(", "))
+    if (task.commentCount > 0) add("Comments" to task.commentCount.toString())
+    task.createdAt?.let { add("Created" to it.format(timestampFormat)) }
+    task.completedAt?.let { add("Completed" to it.format(timestampFormat)) }
+}
+
 private val timeFormat = DateTimeFormatter.ofPattern("HH:mm")
 private val dateFormat = DateTimeFormatter.ofPattern("EEE d MMM")
+private val fullDateFormat = DateTimeFormatter.ofPattern("EEE d MMM yyyy")
+private val timestampFormat = DateTimeFormatter.ofPattern("EEE d MMM yyyy HH:mm")
 
 /** "14:00" for a timed task today; "Overdue · Thu 5 Nov" (plus time, if any) for older tasks. */
 private fun dueLabel(due: Due?): String? {

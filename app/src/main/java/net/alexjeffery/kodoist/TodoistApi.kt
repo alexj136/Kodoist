@@ -14,24 +14,32 @@ import java.time.LocalDateTime
 import java.time.LocalTime
 import java.time.OffsetDateTime
 import java.time.ZoneId
+import java.time.ZonedDateTime
 
 /** A task's due date in the device's timezone. [time] is null for all-day tasks. */
-data class Due(val date: LocalDate, val time: LocalTime?, val isRecurring: Boolean) {
+data class Due(
+    val date: LocalDate,
+    val time: LocalTime?,
+    val isRecurring: Boolean,
+    /** Todoist's human-readable form, e.g. "every day" for a recurring task. */
+    val text: String?,
+) {
     companion object {
         fun parse(json: JSONObject?): Due? {
             if (json == null) return null
             val raw = json.optString("date").takeIf { it.isNotEmpty() } ?: return null
             val recurring = json.optBoolean("is_recurring")
+            val text = json.nonEmptyString("string")
             return try {
                 when {
-                    raw.length == 10 -> Due(LocalDate.parse(raw), null, recurring)
+                    raw.length == 10 -> Due(LocalDate.parse(raw), null, recurring, text)
                     // Fixed-timezone datetime (e.g. "2026-11-07T08:00:00Z"): convert to device time.
                     raw.endsWith("Z") || raw.lastIndexOf('+') > 10 || raw.lastIndexOf('-') > 10 -> {
                         val local = OffsetDateTime.parse(raw).atZoneSameInstant(ZoneId.systemDefault())
-                        Due(local.toLocalDate(), local.toLocalTime(), recurring)
+                        Due(local.toLocalDate(), local.toLocalTime(), recurring, text)
                     }
                     // Floating datetime (e.g. "2026-11-07T10:00:00"): already local time.
-                    else -> LocalDateTime.parse(raw).let { Due(it.toLocalDate(), it.toLocalTime(), recurring) }
+                    else -> LocalDateTime.parse(raw).let { Due(it.toLocalDate(), it.toLocalTime(), recurring, text) }
                 }
             } catch (e: Exception) {
                 null
@@ -40,13 +48,41 @@ data class Due(val date: LocalDate, val time: LocalTime?, val isRecurring: Boole
     }
 }
 
-data class Task(val id: String, val content: String, val due: Due?, val dayOrder: Int) {
+data class Task(
+    val id: String,
+    val content: String,
+    val due: Due?,
+    val dayOrder: Int,
+    val description: String?,
+    /** Todoist's API numbers priorities backwards: 4 is what the apps call P1. */
+    val priority: Int,
+    val labels: List<String>,
+    val deadline: LocalDate?,
+    /** E.g. "30 minutes". */
+    val duration: String?,
+    val commentCount: Int,
+    val createdAt: ZonedDateTime?,
+    val completedAt: ZonedDateTime?,
+) {
     companion object {
         fun from(t: JSONObject) = Task(
             id = t.getString("id"),
             content = t.getString("content"),
             due = Due.parse(t.optJSONObject("due")),
             dayOrder = t.optInt("day_order", 0),
+            description = t.nonEmptyString("description"),
+            priority = t.optInt("priority", 1),
+            labels = t.optJSONArray("labels")?.let { a -> List(a.length()) { a.getString(it) } }.orEmpty(),
+            deadline = t.optJSONObject("deadline")?.nonEmptyString("date")?.let {
+                runCatching { LocalDate.parse(it) }.getOrNull()
+            },
+            duration = t.optJSONObject("duration")?.let { d ->
+                val amount = d.optInt("amount")
+                d.nonEmptyString("unit")?.let { "$amount $it" + if (amount == 1) "" else "s" }
+            },
+            commentCount = t.optInt("note_count", 0),
+            createdAt = t.timestamp("added_at"),
+            completedAt = t.timestamp("completed_at"),
         )
 
         /**
@@ -59,6 +95,15 @@ data class Task(val id: String, val content: String, val due: Due?, val dayOrder
             { it.dayOrder },
         )
     }
+}
+
+/** org.json's optString returns the text "null" for a JSON null, so check for it first. */
+private fun JSONObject.nonEmptyString(key: String): String? =
+    if (isNull(key)) null else optString(key).ifEmpty { null }
+
+/** Parses an RFC 3339 timestamp field into the device's timezone. */
+private fun JSONObject.timestamp(key: String): ZonedDateTime? = nonEmptyString(key)?.let {
+    runCatching { OffsetDateTime.parse(it).atZoneSameInstant(ZoneId.systemDefault()) }.getOrNull()
 }
 
 /** Thrown when Todoist rejects the token (HTTP 401/403). */

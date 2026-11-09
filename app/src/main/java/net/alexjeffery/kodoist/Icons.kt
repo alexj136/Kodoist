@@ -7,10 +7,16 @@ import androidx.compose.ui.graphics.vector.PathParser
 import androidx.compose.ui.unit.dp
 
 /**
- * The two icons the app needs, using the standard Material Design path data (Apache 2.0).
+ * The few icons the app needs, using the standard Material Design path data (Apache 2.0).
  * Defined here so the app doesn't need the large material-icons-extended library.
  */
 object AppIcons {
+    /** Left arrow ("back"). */
+    val Back: ImageVector = icon(
+        "Back",
+        "M20,11H7.83l5.59,-5.59L12,4l-8,8 8,8 1.41,-1.41L7.83,13H20v-2z",
+    )
+
     /** Circular arrow ("refresh"). */
     val Refresh: ImageVector = icon(
         "Refresh",

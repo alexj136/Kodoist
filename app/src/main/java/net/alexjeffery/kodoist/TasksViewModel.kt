@@ -14,6 +14,9 @@ import kotlinx.coroutines.coroutineScope
 import kotlinx.coroutines.launch
 import java.time.LocalDate
 
+/** The task being shown in the task view, and whether it was opened from the completed list. */
+data class OpenTask(val task: Task, val completed: Boolean)
+
 class TasksViewModel(app: Application) : AndroidViewModel(app) {
 
     private val prefs = app.getSharedPreferences("todoist", Context.MODE_PRIVATE)
@@ -26,6 +29,9 @@ class TasksViewModel(app: Application) : AndroidViewModel(app) {
     val completed = mutableStateListOf<Task>()
     /** IDs of tasks with a complete or reopen request in flight; shown with the checkbox flipped. */
     val pending = mutableStateListOf<String>()
+    /** The task shown in the task view; null means the Today view is showing. */
+    var openTask by mutableStateOf<OpenTask?>(null)
+        private set
     var loading by mutableStateOf(false)
         private set
     var adding by mutableStateOf(false)
@@ -62,7 +68,33 @@ class TasksViewModel(app: Application) : AndroidViewModel(app) {
         tasks.clear()
         completed.clear()
         pending.clear()
+        openTask = null
         error = null
+    }
+
+    fun viewTask(task: Task, completed: Boolean) {
+        openTask = OpenTask(task, completed)
+    }
+
+    fun closeTaskView() {
+        openTask = null
+    }
+
+    /**
+     * Keeps the task view current after the lists change. A recurring task can be in both lists
+     * under one ID, so the list it was opened from is checked first. A task found in neither
+     * list (for example, rescheduled elsewhere) keeps showing what was last known.
+     */
+    private fun syncOpenTask() {
+        val open = openTask ?: return
+        val id = open.task.id
+        val same = (if (open.completed) completed else tasks).find { it.id == id }
+        val other = (if (open.completed) tasks else completed).find { it.id == id }
+        openTask = when {
+            same != null -> OpenTask(same, open.completed)
+            other != null -> OpenTask(other, !open.completed)
+            else -> open
+        }
     }
 
     fun refresh() {
@@ -87,6 +119,7 @@ class TasksViewModel(app: Application) : AndroidViewModel(app) {
         val (a, d) = active.await() to done.await()
         tasks.replaceWith(a)
         completed.replaceWith(d)
+        syncOpenTask()
     }
 
     fun complete(task: Task) {
@@ -103,6 +136,7 @@ class TasksViewModel(app: Application) : AndroidViewModel(app) {
                 if (due != null && !due.isRecurring && due.date == LocalDate.now()) {
                     completed.insertSorted(task)
                 }
+                syncOpenTask()
             } catch (e: Exception) {
                 handle(e)
             } finally {
@@ -120,6 +154,7 @@ class TasksViewModel(app: Application) : AndroidViewModel(app) {
                 api.reopenTask(task.id)
                 completed.removeAll { it.id == task.id }
                 tasks.insertSorted(task)
+                syncOpenTask()
             } catch (e: Exception) {
                 handle(e)
             } finally {

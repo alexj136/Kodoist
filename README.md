@@ -8,9 +8,11 @@ Mudita's E Ink-optimised Jetpack Compose component library.
 
 - Shows your open tasks that are **overdue or due today** (Todoist filter `today | overdue`),
   sorted by due date and time with the oldest first. On each day, timed tasks come before all-day ones.
-- Tap a task, or its checkbox, to complete it. The completion is synced to Todoist immediately.
+- Tap a task's checkbox to complete it. The completion is synced to Todoist immediately.
+- Tap a task's text to open a read-only view of it, with its description, due date, recurrence
+  and other details.
 - A collapsible **Completed today** section at the bottom lists completed tasks due today.
-  Tap one to mark it incomplete again (reopen).
+  Tap one's checkbox to mark it incomplete again (reopen), or its text to open it.
 - Add a task by name. It is created with the due date "today", so it shows up in the list.
 - Re-syncs every time the app comes to the foreground, and has a refresh icon (top right)
 
